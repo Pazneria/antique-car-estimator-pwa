@@ -75,7 +75,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 voiceOutputElement.textContent = 'Tap to speak';
                 voiceOutputElement.onclick = function() {
                     window.voiceRecognition.start();
-                    voiceOutputElement.textContent = 'Listening...';
                 };
             }
         } else {

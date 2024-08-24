@@ -11,37 +11,35 @@ function initializeVoiceRecognition() {
     }
 
     recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.continuous = true;
+    recognition.continuous = !isMobile;
     recognition.interimResults = false;
     recognition.lang = 'en-US';
 
     recognition.onstart = function() {
         console.log('Voice recognition started');
         isListening = true;
-        document.getElementById('voice-output').textContent = 'Listening... Speak all numbers in order.';
+        document.getElementById('voice-output').textContent = 'Listening... Speak your number.';
     };
 
     recognition.onresult = function(event) {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            if (event.results[i].isFinal) {
-                const transcript = event.results[i][0].transcript.trim();
-                console.log('Recognized:', transcript);
-                processTranscript(transcript);
-            }
-        }
+        const transcript = event.results[0][0].transcript.trim();
+        console.log('Recognized:', transcript);
+        processTranscript(transcript);
     };
 
     recognition.onerror = function(event) {
         console.error('Voice recognition error:', event.error);
-        document.getElementById('voice-output').textContent = `Error: ${event.error}. Please try again or use manual input.`;
+        document.getElementById('voice-output').textContent = `Error: ${event.error}. Please try again.`;
         isListening = false;
     };
 
     recognition.onend = function() {
         console.log('Voice recognition ended');
         isListening = false;
-        if (window.shouldContinueListening) {
+        if (window.shouldContinueListening && !isMobile) {
             startListening();
+        } else if (isMobile) {
+            document.getElementById('voice-output').textContent = 'Tap to speak again';
         }
     };
 
@@ -54,7 +52,7 @@ function startListening() {
             recognition.start();
         } catch (error) {
             console.error('Failed to start voice recognition:', error);
-            document.getElementById('voice-output').textContent = 'Failed to start voice recognition. Please try again or use manual input.';
+            document.getElementById('voice-output').textContent = 'Failed to start voice recognition. Please try again.';
             return false;
         }
     }
@@ -69,31 +67,21 @@ function stopListening() {
 }
 
 function processTranscript(transcript) {
-    const numbers = transcript.match(/\d+/g);
-    if (numbers) {
-        numbers.forEach(number => {
-            window.processRecognizedNumber(parseInt(number));
-        });
+    const number = parseInt(transcript);
+    if (!isNaN(number)) {
+        window.processRecognizedNumber(number);
+    } else {
+        document.getElementById('voice-output').textContent = 'Could not recognize a number. Please try again.';
     }
 }
 
 function requestMicrophoneAccess() {
-    return new Promise((resolve, reject) => {
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function(stream) {
-                stream.getTracks().forEach(track => track.stop());
-                console.log('Microphone access granted');
-                if (initializeVoiceRecognition()) {
-                    resolve(true);
-                } else {
-                    reject('Failed to initialize voice recognition');
-                }
-            })
-            .catch(function(err) {
-                console.error('Error accessing microphone:', err);
-                reject(err);
-            });
-    });
+    return navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(function(stream) {
+            stream.getTracks().forEach(track => track.stop());
+            console.log('Microphone access granted');
+            return initializeVoiceRecognition();
+        });
 }
 
 window.voiceRecognition = {
