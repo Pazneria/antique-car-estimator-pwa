@@ -10,6 +10,7 @@ const variables = [
 
 let currentVariableIndex = 0;
 let estimates = {};
+let useVoiceRecognition = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     const startButton = document.getElementById('start-estimate');
@@ -21,8 +22,6 @@ document.addEventListener('DOMContentLoaded', function() {
     manualInputElement.style.display = 'none';
     manualInputElement.placeholder = 'Enter number';
     currentVariableElement.after(manualInputElement);
-
-    let useVoiceRecognition = false;
 
     startButton.addEventListener('click', initializeEstimateProcess);
 
@@ -43,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(() => {
                 useVoiceRecognition = true;
                 voiceOutputElement.textContent = 'Microphone access granted. Starting estimate...';
-                setTimeout(startEstimateProcess, 1000);
+                startEstimateProcess();
             })
             .catch((err) => {
                 console.error('Microphone access denied or voice recognition failed:', err);
@@ -67,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentVariableElement.textContent = `${variable.question}: Waiting for input...`;
             manualInputElement.placeholder = `Enter number for ${variable.name}`;
             if (useVoiceRecognition) {
-                window.voiceRecognition.start();
+                setTimeout(() => window.voiceRecognition.start(), 1000);
             }
         } else {
             finishEstimate();
@@ -82,7 +81,10 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`Recorded for ${variable.name}: ${number}`);
             
             currentVariableIndex++;
-            updateCurrentVariableDisplay();
+            if (useVoiceRecognition) {
+                window.voiceRecognition.stop();
+            }
+            setTimeout(updateCurrentVariableDisplay, 1000);
         }
     }
 
@@ -90,9 +92,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function finishEstimate() {
         console.log('Finishing estimate');
-        if (useVoiceRecognition) {
-            window.voiceRecognition.stop();
-        }
         const itemizedEstimate = calculateItemizedEstimate(estimates);
         displayItemizedEstimate(itemizedEstimate);
         startButton.disabled = false;
