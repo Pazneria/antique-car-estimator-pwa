@@ -1,17 +1,17 @@
-// Continuous Voice recognition handling for the Antique Car Estimator app
+// Voice recognition handling for the Antique Car Estimator app
 
 let recognition;
 let isListening = false;
 
 function initializeVoiceRecognition() {
-    if (!('webkitSpeechRecognition' in window)) {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         console.error('Web Speech API is not supported in this browser');
         document.getElementById('start-estimate').style.display = 'none';
-        document.getElementById('voice-output').textContent = 'Voice recognition is not supported in this browser. Please use a compatible browser.';
-        return;
+        document.getElementById('voice-output').textContent = 'Voice recognition is not supported in this browser. Please use manual input.';
+        return false;
     }
 
-    recognition = new webkitSpeechRecognition();
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
@@ -34,16 +34,19 @@ function initializeVoiceRecognition() {
 
     recognition.onerror = function(event) {
         console.error('Voice recognition error:', event.error);
-        document.getElementById('voice-output').textContent = `Error: ${event.error}. Please try again.`;
+        document.getElementById('voice-output').textContent = `Error: ${event.error}. Please try again or use manual input.`;
+        isListening = false;
     };
 
     recognition.onend = function() {
         console.log('Voice recognition ended');
         isListening = false;
         if (window.shouldContinueListening) {
-            recognition.start();
+            startListening();
         }
     };
+
+    return true;
 }
 
 function startListening() {
@@ -52,9 +55,11 @@ function startListening() {
             recognition.start();
         } catch (error) {
             console.error('Failed to start voice recognition:', error);
-            document.getElementById('voice-output').textContent = 'Failed to start voice recognition. Please refresh the page and try again.';
+            document.getElementById('voice-output').textContent = 'Failed to start voice recognition. Please use manual input.';
+            return false;
         }
     }
+    return true;
 }
 
 function stopListening() {
@@ -78,12 +83,12 @@ function requestMicrophoneAccess() {
         .then(function(stream) {
             stream.getTracks().forEach(track => track.stop());
             console.log('Microphone access granted');
-            initializeVoiceRecognition();
-            return Promise.resolve();
+            return initializeVoiceRecognition();
         })
         .catch(function(err) {
             console.error('Error accessing microphone:', err);
-            return Promise.reject(err);
+            document.getElementById('voice-output').textContent = 'Unable to access microphone. Please check your browser settings or use manual input.';
+            return false;
         });
 }
 

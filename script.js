@@ -17,8 +17,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentVariableElement = document.getElementById('current-variable');
     const voiceOutputElement = document.getElementById('voice-output');
     const resultOutputElement = document.getElementById('result-output');
+    const manualInputElement = document.createElement('input');
+    manualInputElement.type = 'number';
+    manualInputElement.style.display = 'none';
+    manualInputElement.placeholder = 'Enter number';
+    currentVariableElement.after(manualInputElement);
 
     startButton.addEventListener('click', initializeEstimateProcess);
+
+    manualInputElement.addEventListener('change', function() {
+        const number = parseInt(this.value);
+        if (!isNaN(number)) {
+            processRecognizedNumber(number);
+            this.value = '';
+        }
+    });
 
     function initializeEstimateProcess() {
         console.log('Initializing estimate process');
@@ -26,14 +39,19 @@ document.addEventListener('DOMContentLoaded', function() {
         voiceOutputElement.textContent = 'Requesting microphone access...';
 
         window.voiceRecognition.requestAccess()
-            .then(() => {
-                voiceOutputElement.textContent = 'Microphone access granted. Starting estimate...';
-                setTimeout(startEstimateProcess, 1000);
+            .then((success) => {
+                if (success) {
+                    voiceOutputElement.textContent = 'Microphone access granted. Starting estimate...';
+                    setTimeout(startEstimateProcess, 1000);
+                } else {
+                    throw new Error('Voice recognition initialization failed');
+                }
             })
             .catch((err) => {
-                console.error('Microphone access denied:', err);
-                voiceOutputElement.textContent = 'Microphone access denied. Please grant access and try again.';
-                startButton.disabled = false;
+                console.error('Microphone access denied or voice recognition failed:', err);
+                voiceOutputElement.textContent = 'Using manual input due to microphone access denial or voice recognition failure.';
+                manualInputElement.style.display = 'block';
+                startEstimateProcess();
             });
     }
 
@@ -43,19 +61,22 @@ document.addEventListener('DOMContentLoaded', function() {
         estimates = {};
         window.shouldContinueListening = true;
         updateCurrentVariableDisplay();
-        window.voiceRecognition.start();
+        if (manualInputElement.style.display === 'none') {
+            window.voiceRecognition.start();
+        }
     }
 
     function updateCurrentVariableDisplay() {
         if (currentVariableIndex < variables.length) {
             const variable = variables[currentVariableIndex];
             currentVariableElement.textContent = `${variable.question}: Waiting for input...`;
+            manualInputElement.placeholder = `Enter number for ${variable.name}`;
         } else {
             finishEstimate();
         }
     }
 
-    window.processRecognizedNumber = function(number) {
+    function processRecognizedNumber(number) {
         if (currentVariableIndex < variables.length) {
             const variable = variables[currentVariableIndex];
             estimates[variable.name] = number;
@@ -65,7 +86,9 @@ document.addEventListener('DOMContentLoaded', function() {
             currentVariableIndex++;
             updateCurrentVariableDisplay();
         }
-    };
+    }
+
+    window.processRecognizedNumber = processRecognizedNumber;
 
     function finishEstimate() {
         console.log('Finishing estimate');
@@ -76,6 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
         startButton.disabled = false;
         currentVariableElement.textContent = 'Estimate complete';
         voiceOutputElement.textContent = '';
+        manualInputElement.style.display = 'none';
     }
 
     function calculateItemizedEstimate(parts) {
