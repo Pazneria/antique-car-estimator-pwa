@@ -22,6 +22,7 @@ function initializeVoiceRecognition() {
     };
 
     recognition.onresult = function(event) {
+        console.log('Recognition result received');
         const transcript = event.results[0][0].transcript.trim();
         console.log('Recognized:', transcript);
         processTranscript(transcript);
@@ -36,10 +37,10 @@ function initializeVoiceRecognition() {
     recognition.onend = function() {
         console.log('Voice recognition ended');
         isListening = false;
-        if (window.shouldContinueListening && !isMobile) {
-            startListening();
-        } else if (isMobile) {
+        if (isMobile) {
             document.getElementById('voice-output').textContent = 'Tap to speak again';
+        } else if (window.shouldContinueListening) {
+            startListening();
         }
     };
 
@@ -61,16 +62,18 @@ function startListening() {
 
 function stopListening() {
     if (isListening && recognition) {
-        window.shouldContinueListening = false;
         recognition.stop();
     }
 }
 
 function processTranscript(transcript) {
+    console.log('Processing transcript:', transcript);
     const number = parseInt(transcript);
     if (!isNaN(number)) {
+        console.log('Valid number recognized:', number);
         window.processRecognizedNumber(number);
     } else {
+        console.log('Could not recognize a number from:', transcript);
         document.getElementById('voice-output').textContent = 'Could not recognize a number. Please try again.';
     }
 }

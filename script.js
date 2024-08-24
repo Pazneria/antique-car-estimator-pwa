@@ -82,7 +82,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function processRecognizedNumber(number) {
+    window.processRecognizedNumber = function(number) {
+        console.log('Processing recognized number:', number);
         if (currentVariableIndex < variables.length) {
             const variable = variables[currentVariableIndex];
             estimates[variable.name] = number;
@@ -93,11 +94,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.voiceRecognition.isMobile) {
                 window.voiceRecognition.stop();
             }
-            updateCurrentVariableDisplay();
+            setTimeout(updateCurrentVariableDisplay, 1000);
         }
-    }
-
-    window.processRecognizedNumber = processRecognizedNumber;
+    };
 
     function finishEstimate() {
         console.log('Finishing estimate');
