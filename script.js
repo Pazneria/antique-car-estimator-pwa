@@ -12,6 +12,13 @@ let currentVariableIndex = 0;
 let estimates = {};
 window.shouldContinueListening = false;
 
+function debugLog(message) {
+    console.log(message);
+    const debugElement = document.getElementById('debug-output');
+    debugElement.innerHTML += message + '<br>';
+    debugElement.scrollTop = debugElement.scrollHeight;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const startButton = document.getElementById('start-estimate');
     const currentVariableElement = document.getElementById('current-variable');
@@ -22,6 +29,16 @@ document.addEventListener('DOMContentLoaded', function() {
     manualInputElement.style.display = 'none';
     manualInputElement.placeholder = 'Enter number';
     currentVariableElement.after(manualInputElement);
+
+    // Create debug output element
+    const debugElement = document.createElement('div');
+    debugElement.id = 'debug-output';
+    debugElement.style.border = '1px solid #ccc';
+    debugElement.style.padding = '10px';
+    debugElement.style.marginTop = '20px';
+    debugElement.style.height = '200px';
+    debugElement.style.overflowY = 'scroll';
+    document.body.appendChild(debugElement);
 
     startButton.addEventListener('click', initializeEstimateProcess);
 
@@ -34,13 +51,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function initializeEstimateProcess() {
-        console.log('Initializing estimate process');
+        debugLog('Initializing estimate process');
         startButton.disabled = true;
         voiceOutputElement.textContent = 'Requesting microphone access...';
 
         window.voiceRecognition.requestAccess()
             .then((success) => {
                 if (success) {
+                    debugLog('Microphone access granted. Starting estimate...');
                     voiceOutputElement.textContent = 'Microphone access granted. Starting estimate...';
                     setTimeout(startEstimateProcess, 1000);
                 } else {
@@ -48,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch((err) => {
-                console.error('Microphone access denied or voice recognition failed:', err);
+                debugLog('Microphone access denied or voice recognition failed: ' + err);
                 voiceOutputElement.textContent = 'Using manual input due to microphone access denial or voice recognition failure.';
                 manualInputElement.style.display = 'block';
                 startEstimateProcess();
@@ -56,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function startEstimateProcess() {
-        console.log('Starting estimate process');
+        debugLog('Starting estimate process');
         currentVariableIndex = 0;
         estimates = {};
         window.shouldContinueListening = true;
@@ -71,9 +89,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const variable = variables[currentVariableIndex];
             currentVariableElement.textContent = `${variable.question}: Waiting for input...`;
             manualInputElement.placeholder = `Enter number for ${variable.name}`;
+            debugLog(`Waiting for input for: ${variable.name}`);
             if (window.voiceRecognition.isMobile) {
                 voiceOutputElement.textContent = 'Tap to speak';
                 voiceOutputElement.onclick = function() {
+                    debugLog('Tapped to speak');
                     window.voiceRecognition.start();
                 };
             }
@@ -83,12 +103,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.processRecognizedNumber = function(number) {
-        console.log('Processing recognized number:', number);
+        debugLog(`Processing recognized number: ${number}`);
         if (currentVariableIndex < variables.length) {
             const variable = variables[currentVariableIndex];
             estimates[variable.name] = number;
             currentVariableElement.textContent = `${variable.question}: ${number}`;
-            console.log(`Recorded for ${variable.name}: ${number}`);
+            debugLog(`Recorded for ${variable.name}: ${number}`);
             
             currentVariableIndex++;
             if (window.voiceRecognition.isMobile) {
@@ -99,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function finishEstimate() {
-        console.log('Finishing estimate');
+        debugLog('Finishing estimate');
         window.shouldContinueListening = false;
         window.voiceRecognition.stop();
         const itemizedEstimate = calculateItemizedEstimate(estimates);
