@@ -1,33 +1,65 @@
 // This is the main JavaScript file for our Antique Car Estimator app
 
-// Wait for the page to fully load before running our code
+const variables = [
+    { name: 'engine', question: 'How many engines need work?' },
+    { name: 'transmission', question: 'How many transmissions need work?' },
+    { name: 'paint', question: 'How many paint jobs are needed?' },
+    { name: 'interior', question: 'How many interiors need refurbishing?' },
+    { name: 'tires', question: 'How many tires need replacing?' }
+];
+
+let currentVariableIndex = 0;
+let estimates = {};
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Get references to the elements we'll be working with
-    const startVoiceButton = document.getElementById('start-voice');
+    const startButton = document.getElementById('start-estimate');
+    const currentVariableElement = document.getElementById('current-variable');
     const voiceOutputElement = document.getElementById('voice-output');
     const resultOutputElement = document.getElementById('result-output');
 
-    // Function to handle the start voice button click
-    function handleStartVoiceClick() {
-        voiceOutputElement.textContent = 'Listening... (Voice recognition not yet implemented)';
-        // TODO: We'll add actual voice recognition code here later
+    startButton.addEventListener('click', startEstimateProcess);
+
+    function startEstimateProcess() {
+        currentVariableIndex = 0;
+        estimates = {};
+        startButton.disabled = true;
+        askNextQuestion();
     }
 
-    // Add click event listener to the start voice button
-    startVoiceButton.addEventListener('click', handleStartVoiceClick);
-
-    // Function to display the estimate
-    function displayEstimate(estimate) {
-        resultOutputElement.textContent = `Estimated cost: $${estimate}`;
+    function askNextQuestion() {
+        if (currentVariableIndex < variables.length) {
+            const variable = variables[currentVariableIndex];
+            currentVariableElement.textContent = variable.question;
+            startVoiceRecognition();
+        } else {
+            finishEstimate();
+        }
     }
 
-    // Example usage of displayEstimate (we'll replace this with real calculations later)
-    displayEstimate(1500);
+    function startVoiceRecognition() {
+        // This function will be implemented in voice-recognition.js
+        // It should call processVoiceInput when it gets a result
+    }
 
-    // TODO: We'll add more functions here as we develop the app
+    window.processVoiceInput = function(input) {
+        const variable = variables[currentVariableIndex];
+        const quantity = parseInt(input) || 0;
+        estimates[variable.name] = quantity;
+
+        voiceOutputElement.textContent = `${variable.name}: ${quantity}`;
+
+        currentVariableIndex++;
+        setTimeout(askNextQuestion, 1000); // Wait 1 second before next question
+    };
+
+    function finishEstimate() {
+        const total = calculateEstimate(estimates);
+        resultOutputElement.textContent = `Total Estimate: $${total}`;
+        startButton.disabled = false;
+        currentVariableElement.textContent = 'Estimate complete';
+    }
 });
 
-// Check if the browser supports service workers (for PWA functionality)
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js')
         .then(function(registration) {
