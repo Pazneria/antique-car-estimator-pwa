@@ -1,6 +1,7 @@
 // Voice recognition handling for the Antique Car Estimator app
 
 let recognition;
+let audioContext;
 let isListening = false;
 
 function initializeVoiceRecognition() {
@@ -12,24 +13,20 @@ function initializeVoiceRecognition() {
     }
 
     recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.interimResults = false;
     recognition.lang = 'en-US';
 
     recognition.onstart = function() {
         console.log('Voice recognition started');
         isListening = true;
-        document.getElementById('voice-output').textContent = 'Listening... Speak all numbers in order.';
+        document.getElementById('voice-output').textContent = 'Listening... Speak a number.';
     };
 
     recognition.onresult = function(event) {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            if (event.results[i].isFinal) {
-                const transcript = event.results[i][0].transcript.trim();
-                console.log('Recognized:', transcript);
-                processTranscript(transcript);
-            }
-        }
+        const transcript = event.results[0][0].transcript.trim();
+        console.log('Recognized:', transcript);
+        processTranscript(transcript);
     };
 
     recognition.onerror = function(event) {
@@ -41,9 +38,6 @@ function initializeVoiceRecognition() {
     recognition.onend = function() {
         console.log('Voice recognition ended');
         isListening = false;
-        if (window.shouldContinueListening) {
-            startListening();
-        }
     };
 
     return true;
@@ -55,7 +49,7 @@ function startListening() {
             recognition.start();
         } catch (error) {
             console.error('Failed to start voice recognition:', error);
-            document.getElementById('voice-output').textContent = 'Failed to start voice recognition. Please use manual input.';
+            document.getElementById('voice-output').textContent = 'Failed to start voice recognition. Please try again or use manual input.';
             return false;
         }
     }
@@ -64,32 +58,46 @@ function startListening() {
 
 function stopListening() {
     if (isListening && recognition) {
-        window.shouldContinueListening = false;
         recognition.stop();
     }
 }
 
 function processTranscript(transcript) {
-    const numbers = transcript.match(/\d+/g);
-    if (numbers) {
-        numbers.forEach(number => {
-            window.processRecognizedNumber(parseInt(number));
-        });
+    const number = parseInt(transcript);
+    if (!isNaN(number)) {
+        window.processRecognizedNumber(number);
+    } else {
+        document.getElementById('voice-output').textContent = 'Could not recognize a number. Please try again.';
     }
 }
 
 function requestMicrophoneAccess() {
-    return navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(function(stream) {
-            stream.getTracks().forEach(track => track.stop());
-            console.log('Microphone access granted');
-            return initializeVoiceRecognition();
-        })
-        .catch(function(err) {
-            console.error('Error accessing microphone:', err);
-            document.getElementById('voice-output').textContent = 'Unable to access microphone. Please check your browser settings or use manual input.';
-            return false;
-        });
+    return new Promise((resolve, reject) => {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                stream.getTracks().forEach(track => track.stop());
+                console.log('Microphone access granted');
+                
+                // Create and resume AudioContext
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+
+                // Slight delay before initializing recognition
+                setTimeout(() => {
+                    if (initializeVoiceRecognition()) {
+                        resolve(true);
+                    } else {
+                        reject('Failed to initialize voice recognition');
+                    }
+                }, 1000);
+            })
+            .catch(function(err) {
+                console.error('Error accessing microphone:', err);
+                reject(err);
+            });
+    });
 }
 
 window.voiceRecognition = {
