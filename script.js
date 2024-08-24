@@ -10,7 +10,7 @@ const variables = [
 
 let currentVariableIndex = 0;
 let estimates = {};
-let useVoiceRecognition = false;
+window.shouldContinueListening = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     const startButton = document.getElementById('start-estimate');
@@ -39,15 +39,17 @@ document.addEventListener('DOMContentLoaded', function() {
         voiceOutputElement.textContent = 'Requesting microphone access...';
 
         window.voiceRecognition.requestAccess()
-            .then(() => {
-                useVoiceRecognition = true;
-                voiceOutputElement.textContent = 'Microphone access granted. Starting estimate...';
-                startEstimateProcess();
+            .then((success) => {
+                if (success) {
+                    voiceOutputElement.textContent = 'Microphone access granted. Starting estimate...';
+                    setTimeout(startEstimateProcess, 1000);
+                } else {
+                    throw new Error('Voice recognition initialization failed');
+                }
             })
             .catch((err) => {
                 console.error('Microphone access denied or voice recognition failed:', err);
                 voiceOutputElement.textContent = 'Using manual input due to microphone access denial or voice recognition failure.';
-                useVoiceRecognition = false;
                 manualInputElement.style.display = 'block';
                 startEstimateProcess();
             });
@@ -57,7 +59,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Starting estimate process');
         currentVariableIndex = 0;
         estimates = {};
+        window.shouldContinueListening = true;
         updateCurrentVariableDisplay();
+        window.voiceRecognition.start();
     }
 
     function updateCurrentVariableDisplay() {
@@ -65,9 +69,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const variable = variables[currentVariableIndex];
             currentVariableElement.textContent = `${variable.question}: Waiting for input...`;
             manualInputElement.placeholder = `Enter number for ${variable.name}`;
-            if (useVoiceRecognition) {
-                setTimeout(() => window.voiceRecognition.start(), 1000);
-            }
         } else {
             finishEstimate();
         }
@@ -81,10 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`Recorded for ${variable.name}: ${number}`);
             
             currentVariableIndex++;
-            if (useVoiceRecognition) {
-                window.voiceRecognition.stop();
-            }
-            setTimeout(updateCurrentVariableDisplay, 1000);
+            updateCurrentVariableDisplay();
         }
     }
 
@@ -92,6 +90,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function finishEstimate() {
         console.log('Finishing estimate');
+        window.shouldContinueListening = false;
+        window.voiceRecognition.stop();
         const itemizedEstimate = calculateItemizedEstimate(estimates);
         displayItemizedEstimate(itemizedEstimate);
         startButton.disabled = false;

@@ -1,52 +1,53 @@
 // Voice recognition handling for the Antique Car Estimator app
 
 let recognition;
-let isInitialized = false;
+let isListening = false;
 
 function initializeVoiceRecognition() {
-    return new Promise((resolve, reject) => {
-        if (isInitialized) {
-            resolve();
-            return;
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        console.error('Web Speech API is not supported in this browser');
+        return false;
+    }
+
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = function() {
+        console.log('Voice recognition started');
+        isListening = true;
+        document.getElementById('voice-output').textContent = 'Listening... Speak all numbers in order.';
+    };
+
+    recognition.onresult = function(event) {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+                const transcript = event.results[i][0].transcript.trim();
+                console.log('Recognized:', transcript);
+                processTranscript(transcript);
+            }
         }
+    };
 
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            reject('Web Speech API is not supported in this browser');
-            return;
+    recognition.onerror = function(event) {
+        console.error('Voice recognition error:', event.error);
+        document.getElementById('voice-output').textContent = `Error: ${event.error}. Please try again or use manual input.`;
+    };
+
+    recognition.onend = function() {
+        console.log('Voice recognition ended');
+        isListening = false;
+        if (window.shouldContinueListening) {
+            startListening();
         }
+    };
 
-        recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-
-        recognition.onstart = function() {
-            console.log('Voice recognition started');
-            document.getElementById('voice-output').textContent = 'Listening... Speak a number.';
-        };
-
-        recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript.trim();
-            console.log('Recognized:', transcript);
-            processTranscript(transcript);
-        };
-
-        recognition.onerror = function(event) {
-            console.error('Voice recognition error:', event.error);
-            document.getElementById('voice-output').textContent = `Error: ${event.error}. Please try again or use manual input.`;
-        };
-
-        recognition.onend = function() {
-            console.log('Voice recognition ended');
-        };
-
-        isInitialized = true;
-        resolve();
-    });
+    return true;
 }
 
 function startListening() {
-    if (recognition) {
+    if (!isListening && recognition) {
         try {
             recognition.start();
         } catch (error) {
@@ -59,17 +60,18 @@ function startListening() {
 }
 
 function stopListening() {
-    if (recognition) {
+    if (isListening && recognition) {
+        window.shouldContinueListening = false;
         recognition.stop();
     }
 }
 
 function processTranscript(transcript) {
-    const number = parseInt(transcript);
-    if (!isNaN(number)) {
-        window.processRecognizedNumber(number);
-    } else {
-        document.getElementById('voice-output').textContent = 'Could not recognize a number. Please try again.';
+    const numbers = transcript.match(/\d+/g);
+    if (numbers) {
+        numbers.forEach(number => {
+            window.processRecognizedNumber(parseInt(number));
+        });
     }
 }
 
