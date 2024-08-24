@@ -61,7 +61,9 @@ document.addEventListener('DOMContentLoaded', function() {
         estimates = {};
         window.shouldContinueListening = true;
         updateCurrentVariableDisplay();
-        window.voiceRecognition.start();
+        if (!window.voiceRecognition.isMobile) {
+            window.voiceRecognition.start();
+        }
     }
 
     function updateCurrentVariableDisplay() {
@@ -69,6 +71,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const variable = variables[currentVariableIndex];
             currentVariableElement.textContent = `${variable.question}: Waiting for input...`;
             manualInputElement.placeholder = `Enter number for ${variable.name}`;
+            if (window.voiceRecognition.isMobile) {
+                voiceOutputElement.textContent = 'Tap to speak';
+                voiceOutputElement.onclick = function() {
+                    window.voiceRecognition.start();
+                    voiceOutputElement.textContent = 'Listening...';
+                };
+            }
         } else {
             finishEstimate();
         }
@@ -82,6 +91,9 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`Recorded for ${variable.name}: ${number}`);
             
             currentVariableIndex++;
+            if (window.voiceRecognition.isMobile) {
+                window.voiceRecognition.stop();
+            }
             updateCurrentVariableDisplay();
         }
     }
@@ -97,6 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
         startButton.disabled = false;
         currentVariableElement.textContent = 'Estimate complete';
         voiceOutputElement.textContent = '';
+        voiceOutputElement.onclick = null;
         manualInputElement.style.display = 'none';
     }
 

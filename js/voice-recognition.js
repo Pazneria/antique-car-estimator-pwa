@@ -2,6 +2,7 @@
 
 let recognition;
 let isListening = false;
+let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
 function initializeVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -33,6 +34,7 @@ function initializeVoiceRecognition() {
     recognition.onerror = function(event) {
         console.error('Voice recognition error:', event.error);
         document.getElementById('voice-output').textContent = `Error: ${event.error}. Please try again or use manual input.`;
+        isListening = false;
     };
 
     recognition.onend = function() {
@@ -76,16 +78,27 @@ function processTranscript(transcript) {
 }
 
 function requestMicrophoneAccess() {
-    return navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(function(stream) {
-            stream.getTracks().forEach(track => track.stop());
-            console.log('Microphone access granted');
-            return initializeVoiceRecognition();
-        });
+    return new Promise((resolve, reject) => {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                stream.getTracks().forEach(track => track.stop());
+                console.log('Microphone access granted');
+                if (initializeVoiceRecognition()) {
+                    resolve(true);
+                } else {
+                    reject('Failed to initialize voice recognition');
+                }
+            })
+            .catch(function(err) {
+                console.error('Error accessing microphone:', err);
+                reject(err);
+            });
+    });
 }
 
 window.voiceRecognition = {
     requestAccess: requestMicrophoneAccess,
     start: startListening,
-    stop: stopListening
+    stop: stopListening,
+    isMobile: isMobile
 };
